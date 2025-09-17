@@ -20,7 +20,7 @@ import static org.hamcrest.Matchers.*;
 public class OrderCreationTest {
     private Client client;
     private List<String> colors;
-    private Integer trackId;
+    private Order order;
 
     public OrderCreationTest(List<String> colors) {
         this.colors = colors;
@@ -29,18 +29,22 @@ public class OrderCreationTest {
     @Before
     public void setUp() {
         client = new Client();
-        trackId = null;
+        order = Order.getRandom(colors);
     }
 
     @After
     public void tearDown() {
-        // Отменяем заказ после теста, если он был создан
-        if (trackId != null) {
-            try {
+        // Создаем заказ чтобы получить track для отмены
+        try {
+            Response createResponse = client.post("/api/v1/orders", order);
+
+            if (createResponse.statusCode() == 201) {
+                Integer trackId = createResponse.then().extract().path("track");
+                // Отменяем заказ
                 client.put("/api/v1/orders/cancel?track=" + trackId);
-            } catch (Exception e) {
-                System.out.println("Failed to cancel order with track: " + trackId + ", error: " + e.getMessage());
             }
+        } catch (Exception e) {
+            System.out.println("Failed to create or cancel order in tearDown: " + e.getMessage());
         }
     }
 
@@ -57,15 +61,10 @@ public class OrderCreationTest {
     @Test
     @DisplayName("Создание заказа с разными цветами")
     public void orderCanBeCreatedWithDifferentColors() {
-        Order order = Order.getRandom(colors);
-
         Response response = client.post("/api/v1/orders", order);
 
         response.then()
                 .statusCode(201)
                 .body("track", notNullValue());
-
-        // Сохраняем track ID для отмены в tearDown
-        trackId = response.then().extract().path("track");
     }
 }
