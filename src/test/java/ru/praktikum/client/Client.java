@@ -31,4 +31,7 @@
                  .baseUri(BASE_URL)
                  .delete(endpoint);
      }
+
+     public void put(String s) {
+     }
  }
